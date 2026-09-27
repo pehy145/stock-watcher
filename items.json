@@ -1,0 +1,24 @@
+{
+  "items": [
+    {
+      "id": "reserved-tanga-825hq",
+      "name": "Reserved – Tanga s výšivkou",
+      "url": "https://www.reserved.com/cz/cz/tanga-s-vysivkou-825hq-08x",
+      "enabled": true,
+      "watch_sizes": ["S", "M"],
+      "ignore_sizes": [],
+      "notify_sold_out": false,
+      "note": ""
+    },
+    {
+      "id": "decathlon-mt-cushion-2",
+      "name": "Decathlon – MT Cushion 2 (růžová/šedá/bílá)",
+      "url": "https://www.decathlon.cz/p/damske-boty-na-trailovy-beh-mt-cushion-2/_/R-p-334419?mc=8914038",
+      "enabled": true,
+      "watch_sizes": [],
+      "ignore_sizes": ["36"],
+      "notify_sold_out": false,
+      "note": "Jakákoliv jiná velikost než 36"
+    }
+  ]
+}

@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hlídač skladu</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛍️</text></svg>">
+<style>
+:root{
+  --bg:#f6f5f2; --card:#fff; --ink:#1d1c1a; --muted:#6c6a64; --line:#e4e1da;
+  --accent:#6b3fd4; --accent-ink:#fff; --ok:#16794a; --ok-bg:#e3f4ea; --wait:#8a6a00; --wait-bg:#fbf1d2;
+  --err:#b3261e; --err-bg:#fbe4e2; --chip:#efede8; --shadow:0 1px 2px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#161615; --card:#201f1d; --ink:#efede8; --muted:#a19e96; --line:#34322e;
+  --accent:#a488f0; --accent-ink:#161615; --ok:#6fd39f; --ok-bg:#173526; --wait:#e8c65a; --wait-bg:#3a3117;
+  --err:#ff9189; --err-bg:#43201d; --chip:#2c2b28; --shadow:none;
+}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:760px;margin:0 auto;padding:20px 16px 80px}
+header{display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap;margin-bottom:6px}
+h1{font-size:22px;margin:0;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer}
+button:hover{border-color:var(--muted)}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button.ghost{border-color:transparent;background:transparent;padding:6px 8px;color:var(--muted)}
+button.danger{color:var(--err)}
+button:disabled{opacity:.5;cursor:default}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);margin-bottom:12px}
+.item-top{display:flex;gap:10px;align-items:flex-start;justify-content:space-between}
+.item-name{font-weight:600;font-size:16px;word-break:break-word}
+.item-name a{color:inherit;text-decoration:none}
+.item-name a:hover{text-decoration:underline}
+.meta{color:var(--muted);font-size:13px;margin-top:2px}
+.pill{display:inline-block;font-size:12px;font-weight:600;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.pill.available{background:var(--ok-bg);color:var(--ok)}
+.pill.waiting{background:var(--wait-bg);color:var(--wait)}
+.pill.error{background:var(--err-bg);color:var(--err)}
+.pill.new,.pill.off{background:var(--chip);color:var(--muted)}
+.sizes{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.sz{font-size:12px;border-radius:7px;padding:3px 8px;background:var(--chip);color:var(--muted);border:1px solid transparent}
+.sz.ok{background:var(--ok-bg);color:var(--ok)}
+.sz.watched{border-color:var(--accent)}
+.sz.ok.watched{font-weight:700}
+.note{font-size:13px;margin-top:8px;padding:8px 10px;border-radius:8px}
+.note.warn{background:var(--wait-bg);color:var(--wait)}
+.note.err{background:var(--err-bg);color:var(--err)}
+.actions{display:flex;gap:4px;align-items:center;margin-top:8px;flex-wrap:wrap}
+.spacer{flex:1}
+.empty{text-align:center;color:var(--muted);padding:40px 10px}
+.run{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;background:var(--muted)}
+.dot.success{background:var(--ok)} .dot.failure{background:var(--err)} .dot.in_progress,.dot.queued{background:var(--wait)}
+dialog{border:none;border-radius:16px;padding:0;background:var(--card);color:var(--ink);width:min(560px,calc(100vw - 24px));box-shadow:0 20px 60px rgba(0,0,0,.3)}
+dialog::backdrop{background:rgba(0,0,0,.35)}
+form.dlg{padding:18px 18px 14px}
+form.dlg h2{margin:0 0 12px;font-size:18px}
+label{display:block;font-size:13px;font-weight:600;margin:12px 0 5px}
+input[type=text],input[type=url],input[type=password],textarea{width:100%;font:inherit;padding:9px 11px;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+.hint{font-size:12px;color:var(--muted);margin-top:4px;font-weight:400}
+.radios{display:grid;gap:6px}
+.radios label{display:flex;gap:8px;align-items:flex-start;font-weight:400;margin:0;padding:8px 10px;border:1px solid var(--line);border-radius:9px;cursor:pointer}
+.radios label:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.check{display:flex;gap:8px;align-items:center;font-weight:400}
+.known{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.known button{font-size:12px;padding:3px 9px;border-radius:7px}
+.known button.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.dlg-foot{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;max-width:calc(100vw - 32px);opacity:0;transition:opacity .2s;pointer-events:none;z-index:10}
+.toast.show{opacity:1}
+.toggle{position:relative;width:38px;height:22px;flex:none}
+.toggle input{opacity:0;width:0;height:0}
+.toggle span{position:absolute;inset:0;background:var(--line);border-radius:999px;transition:.15s;cursor:pointer}
+.toggle span::before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s}
+.toggle input:checked+span{background:var(--accent)}
+.toggle input:checked+span::before{transform:translateX(16px)}
+.disabled-card{opacity:.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🛍️ Hlídač skladu</h1>
+    <div class="toolbar">
+      <button id="btnCheck" title="Spustí kontrolu hned teď">↻ Zkontrolovat teď</button>
+      <button id="btnAdd" class="primary">+ Přidat</button>
+      <button id="btnSettings" class="ghost" title="Nastavení" aria-label="Nastavení">⚙︎</button>
+    </div>
+  </header>
+  <p class="sub">Hlídá e-shopy každých 30 minut a pošle zprávu na WhatsApp, když se naskladní, co chceš.</p>
+  <div class="run" id="run"></div>
+  <div id="list"></div>
+</div>
+
+<dialog id="dlgItem">
+  <form class="dlg" method="dialog" id="formItem">
+    <h2 id="itemTitle">Přidat produkt</h2>
+    <label for="fUrl">Odkaz na produkt</label>
+    <input type="url" id="fUrl" required placeholder="https://www.reserved.com/cz/cz/…">
+    <div class="hint">Vlož odkaz přesně na barvu, kterou chceš (u Decathlonu včetně <code>?mc=…</code>).</div>
+    <label for="fName">Název (volitelné)</label>
+    <input type="text" id="fName" placeholder="např. Reserved – tanga béžová">
+    <label>Kdy mi dát vědět</label>
+    <div class="radios">
+      <label><input type="radio" name="mode" value="watch" checked> <span><b>Naskladní se konkrétní velikost</b><br><span class="hint">např. S nebo M</span></span></label>
+      <label><input type="radio" name="mode" value="ignore"> <span><b>Objeví se jakákoliv velikost kromě…</b><br><span class="hint">např. vše kromě 36</span></span></label>
+      <label><input type="radio" name="mode" value="any"> <span><b>Produkt je vůbec skladem</b><br><span class="hint">jakákoliv velikost / e-shop bez velikostí</span></span></label>
+    </div>
+    <div id="sizesBox">
+      <label for="fSizes" id="sizesLabel">Velikosti</label>
+      <input type="text" id="fSizes" placeholder="S, M">
+      <div class="hint">Odděl čárkou. Musí odpovídat označení na webu (S, M, 38, 39/40…).</div>
+      <div class="known" id="known"></div>
+    </div>
+    <label class="check"><input type="checkbox" id="fSold"> Napsat mi i když se hlídaná velikost zase vyprodá</label>
+    <label for="fNote">Poznámka (volitelné)</label>
+    <input type="text" id="fNote">
+    <div class="dlg-foot">
+      <button type="button" id="btnCancel">Zrušit</button>
+      <button type="submit" class="primary" id="btnSave">Uložit</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlgSettings">
+  <form class="dlg" method="dialog" id="formSettings">
+    <h2>Nastavení</h2>
+    <label for="sRepo">GitHub repozitář</label>
+    <input type="text" id="sRepo" placeholder="uzivatel/stock-watcher" required>
+    <label for="sToken">GitHub token</label>
+    <input type="password" id="sToken" placeholder="github_pat_…" required autocomplete="off">
+    <div class="hint">Token zůstává jen v tomhle prohlížeči. Návod na vytvoření je v README (krok 4).</div>
+    <div class="dlg-foot" style="justify-content:space-between">
+      <button type="button" id="btnTest">📱 Poslat testovací zprávu</button>
+      <span><button type="button" id="btnSetCancel">Zavřít</button> <button type="submit" class="primary">Uložit</button></span>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const LS = {
+  get(k){ try{return localStorage.getItem('sw_'+k)||''}catch{return ''} },
+  set(k,v){ try{localStorage.setItem('sw_'+k,v)}catch{} }
+};
+let cfg = { repo: LS.get('repo'), token: LS.get('token') };
+if (!cfg.repo) { // guess from GitHub Pages URL: user.github.io/repo/
+  const m = location.hostname.match(/^([^.]+)\.github\.io$/);
+  const p = location.pathname.split('/').filter(Boolean)[0];
+  if (m && p) cfg.repo = m[1] + '/' + p;
+}
+let items = [], itemsSha = null, state = {}, branch = 'main', editing = null;
+
+function toast(msg, ms=3500){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'), ms); }
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const b64enc = str => { const b=new TextEncoder().encode(str); let s=''; b.forEach(x=>s+=String.fromCharCode(x)); return btoa(s); };
+const b64dec = b64 => new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\n/g,'')), c=>c.charCodeAt(0)));
+const normSize = s => String(s).trim().toUpperCase().replace(/\s+/g,' ');
+
+async function gh(path, opts={}){
+  const r = await fetch('https://api.github.com/repos/' + cfg.repo + path, {
+    ...opts,
+    headers: { 'Authorization': 'Bearer ' + cfg.token, 'Accept': 'application/vnd.github+json',
+               'X-GitHub-Api-Version': '2022-11-28', ...(opts.body ? {'Content-Type':'application/json'} : {}) },
+    cache: 'no-store'
+  });
+  if (!r.ok) {
+    let msg = ''; try { msg = (await r.json()).message } catch {}
+    const e = new Error(r.status === 401 ? 'Neplatný token' : r.status === 404 ? 'Repozitář nebo soubor nenalezen (zkontroluj nastavení a práva tokenu)' : `GitHub ${r.status}: ${msg}`);
+    e.status = r.status; throw e;
+  }
+  return r.status === 204 ? null : r.json();
+}
+
+async function loadFile(name){
+  const f = await gh(`/contents/${name}?ref=${branch}`);
+  return { data: JSON.parse(b64dec(f.content) || '{}'), sha: f.sha };
+}
+
+async function loadAll(){
+  if (!cfg.repo || !cfg.token) { openSettings(); renderEmptyConfig(); return; }
+  try {
+    const repo = await gh('');
+    branch = repo.default_branch || 'main';
+    const [it, st] = await Promise.all([loadFile('items.json'), loadFile('state.json').catch(()=>({data:{}}))]);
+    items = it.data.items || []; itemsSha = it.sha; state = (st.data && st.data.items) || {};
+    render();
+    loadRun();
+  } catch (e) {
+    $('#list').innerHTML = `<div class="card note err">${esc(e.message)}</div>`;
+    if (e.status === 401 || e.status === 404) openSettings();
+  }
+}
+
+async function loadRun(){
+  try {
+    const r = await gh('/actions/workflows/check.yml/runs?per_page=1');
+    const run = r.workflow_runs && r.workflow_runs[0];
+    if (!run) { $('#run').innerHTML = 'Kontrola zatím neproběhla.'; return; }
+    const st = run.status === 'completed' ? run.conclusion : run.status;
+    const label = {success:'OK', failure:'selhala', in_progress:'právě běží…', queued:'čeká ve frontě…', cancelled:'zrušena'}[st] || st;
+    const when = new Date(run.run_started_at || run.created_at);
+    $('#run').innerHTML = `<span class="dot ${esc(st)}"></span> Poslední kontrola: ${when.toLocaleString('cs-CZ',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'})} – ${esc(label)} · <a href="${esc(run.html_url)}" target="_blank" rel="noopener">detail</a>`;
+    if (st === 'in_progress' || st === 'queued') setTimeout(()=>{ loadRun(); if (!document.hidden) refreshState(); }, 15000);
+  } catch { $('#run').textContent = ''; }
+}
+
+async function refreshState(){
+  try { const st = await loadFile('state.json'); state = (st.data && st.data.items) || {}; render(); } catch {}
+}
+
+function ruleText(it){
+  if (it.watch_sizes && it.watch_sizes.length) return 'Hlídám velikost ' + it.watch_sizes.join(', ');
+  if (it.ignore_sizes && it.ignore_sizes.length) return 'Hlídám cokoliv kromě ' + it.ignore_sizes.join(', ');
+  return 'Hlídám, jestli je skladem';
+}
+function isWatched(it, size){
+  const n = normSize(size);
+  if (it.watch_sizes && it.watch_sizes.length) return it.watch_sizes.map(normSize).includes(n);
+  if (it.ignore_sizes && it.ignore_sizes.length) return !it.ignore_sizes.map(normSize).includes(n);
+  return true;
+}
+function shopOf(url){ try { return new URL(url).hostname.replace(/^www\./,''); } catch { return ''; } }
+
+function renderEmptyConfig(){
+  $('#list').innerHTML = `<div class="empty">Nejdřív vyplň v ⚙︎ Nastavení svůj GitHub repozitář a token.</div>`;
+}
+
+function render(){
+  if (!items.length) { $('#list').innerHTML = `<div class="empty">Zatím nic nehlídáš. Klikni na <b>+ Přidat</b>.</div>`; return; }
+  $('#list').innerHTML = items.map((it, i) => {
+    const s = state[it.id] || {};
+    const enabled = it.enabled !== false;
+    let pill;
+    if (!enabled) pill = `<span class="pill off">Vypnuto</span>`;
+    else if (!s.status) pill = `<span class="pill new">Čeká na 1. kontrolu</span>`;
+    else if (s.status === 'available') pill = `<span class="pill available">✓ Skladem${s.matched && s.matched[0] !== '(skladem)' ? ': ' + esc(s.matched.join(', ')) : ''}</span>`;
+    else if (s.status === 'error') pill = `<span class="pill error">Chyba</span>`;
+    else pill = `<span class="pill waiting">Čekám</span>`;
+    const sizes = s.sizes ? Object.entries(s.sizes) : [];
+    const chips = sizes.length ? `<div class="sizes">${sizes.map(([z, ok]) =>
+      `<span class="sz ${ok?'ok':''} ${isWatched(it,z)?'watched':''}" title="${ok?'skladem':'vyprodáno'}${isWatched(it,z)?' · hlídáš':''}">${esc(z)}</span>`).join('')}</div>` : '';
+    const notes = [
+      s.status === 'error' && s.last_error ? `<div class="note err">${esc(s.last_error)}${s.errors>1?` (${s.errors}× po sobě)`:''}</div>` : '',
+      s.warning ? `<div class="note warn">${esc(s.warning)}</div>` : ''
+    ].join('');
+    const changed = s.changed_at ? ' · změna ' + new Date(s.changed_at).toLocaleString('cs-CZ',{day:'numeric',month:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+    return `<div class="card ${enabled?'':'disabled-card'}">
+      <div class="item-top">
+        <div style="min-width:0">
+          <div class="item-name"><a href="${esc(it.url)}" target="_blank" rel="noopener">${esc(it.name || s.name || it.url)}</a></div>
+          <div class="meta">${esc(s.shop || shopOf(it.url))} · ${esc(ruleText(it))}${it.notify_sold_out?' · i vyprodání':''}${changed}</div>
+        </div>
+        ${pill}
+      </div>
+      ${chips}${notes}
+      ${it.note ? `<div class="meta" style="margin-top:6px">📝 ${esc(it.note)}</div>` : ''}
+      <div class="actions">
+        <label class="toggle" title="Zapnout/vypnout hlídání"><input type="checkbox" data-toggle="${i}" ${enabled?'checked':''}><span></span></label>
+        <span class="spacer"></span>
+        <button class="ghost" data-edit="${i}">Upravit</button>
+        <button class="ghost danger" data-del="${i}">Smazat</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Save with optimistic retry: always re-read latest items.json, apply change, write.
+async function mutate(fn, message){
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const cur = await loadFile('items.json');
+    const data = cur.data; data.items = data.items || [];
+    fn(data.items);
+    try {
+      const res = await gh('/contents/items.json', { method: 'PUT', body: JSON.stringify({
+        message, branch, sha: cur.sha, content: b64enc(JSON.stringify(data, null, 2) + '\n') }) });
+      items = data.items; itemsSha = res.content.sha; render();
+      return;
+    } catch (e) { if (e.status !== 409 || attempt) throw e; }
+  }
+}
+
+function slug(s){ return (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,40); }
+const splitSizes = v => v.split(/[,;]+/).map(x=>x.trim()).filter(Boolean);
+
+function openItem(i){
+  editing = i;
+  const it = i == null ? { enabled: true, watch_sizes: [], ignore_sizes: [] } : items[i];
+  $('#itemTitle').textContent = i == null ? 'Přidat produkt' : 'Upravit produkt';
+  $('#fUrl').value = it.url || ''; $('#fName').value = it.name || ''; $('#fNote').value = it.note || '';
+  $('#fSold').checked = !!it.notify_sold_out;
+  const mode = it.watch_sizes && it.watch_sizes.length ? 'watch' : it.ignore_sizes && it.ignore_sizes.length ? 'ignore' : (i == null ? 'watch' : 'any');
+  document.querySelector(`input[name=mode][value=${mode}]`).checked = true;
+  $('#fSizes').value = (mode === 'watch' ? it.watch_sizes : mode === 'ignore' ? it.ignore_sizes : []).join(', ');
+  syncMode();
+  const known = i != null && state[it.id] && state[it.id].sizes ? Object.keys(state[it.id].sizes) : [];
+  $('#known').innerHTML = known.length ? '<span class="hint" style="width:100%">Velikosti na webu (klikni pro výběr):</span>' + known.map(z=>`<button type="button" data-size="${esc(z)}">${esc(z)}</button>`).join('') : '';
+  syncKnown();
+  $('#dlgItem').showModal();
+}
+function syncMode(){
+  const mode = document.querySelector('input[name=mode]:checked').value;
+  $('#sizesBox').style.display = mode === 'any' ? 'none' : '';
+  $('#sizesLabel').textContent = mode === 'watch' ? 'Které velikosti hlídat' : 'Které velikosti ignorovat';
+  $('#fSizes').required = mode !== 'any';
+}
+function syncKnown(){
+  const sel = splitSizes($('#fSizes').value).map(normSize);
+  document.querySelectorAll('#known button').forEach(b => b.classList.toggle('on', sel.includes(normSize(b.dataset.size))));
+}
+
+document.querySelectorAll('input[name=mode]').forEach(r => r.addEventListener('change', syncMode));
+$('#fSizes').addEventListener('input', syncKnown);
+$('#known').addEventListener('click', e => {
+  const b = e.target.closest('button[data-size]'); if (!b) return;
+  let sel = splitSizes($('#fSizes').value);
+  const n = normSize(b.dataset.size);
+  sel = sel.some(x=>normSize(x)===n) ? sel.filter(x=>normSize(x)!==n) : [...sel, b.dataset.size];
+  $('#fSizes').value = sel.join(', '); syncKnown();
+});
+
+$('#formItem').addEventListener('submit', async e => {
+  e.preventDefault();
+  const url = $('#fUrl').value.trim();
+  const mode = document.querySelector('input[name=mode]:checked').value;
+  const sizes = mode === 'any' ? [] : splitSizes($('#fSizes').value);
+  if (mode !== 'any' && !sizes.length) { toast('Vyplň aspoň jednu velikost'); return; }
+  const base = editing == null ? {} : items[editing];
+  const id = base.id || (slug(shopOf(url).split('.')[0] + '-' + ($('#fName').value || url.split('/').filter(Boolean).pop())) + '-' + Math.random().toString(36).slice(2,6));
+  const obj = { ...base, id, name: $('#fName').value.trim(), url, enabled: base.enabled !== false,
+    watch_sizes: mode === 'watch' ? sizes : [], ignore_sizes: mode === 'ignore' ? sizes : [],
+    notify_sold_out: $('#fSold').checked, note: $('#fNote').value.trim() };
+  $('#btnSave').disabled = true;
+  try {
+    await mutate(list => { const k = list.findIndex(x => x.id === id); k >= 0 ? list[k] = obj : list.push(obj); },
+                 (editing == null ? 'Přidat: ' : 'Upravit: ') + (obj.name || url));
+    $('#dlgItem').close();
+    toast('Uloženo ✓ Kontrola se spustí do minuty.');
+    setTimeout(loadRun, 8000);
+  } catch (err) { toast('Nepodařilo se uložit: ' + err.message, 6000); }
+  finally { $('#btnSave').disabled = false; }
+});
+$('#btnCancel').onclick = () => $('#dlgItem').close();
+$('#btnAdd').onclick = () => cfg.token ? openItem(null) : openSettings();
+
+$('#list').addEventListener('click', async e => {
+  const ed = e.target.closest('[data-edit]'), del = e.target.closest('[data-del]');
+  if (ed) openItem(+ed.dataset.edit);
+  if (del) {
+    const it = items[+del.dataset.del];
+    if (!confirm('Opravdu přestat hlídat „' + (it.name || it.url) + '“?')) return;
+    try { await mutate(list => { const k = list.findIndex(x => x.id === it.id); if (k >= 0) list.splice(k, 1); }, 'Smazat: ' + (it.name || it.url)); toast('Smazáno'); }
+    catch (err) { toast('Chyba: ' + err.message, 6000); }
+  }
+});
+$('#list').addEventListener('change', async e => {
+  const t = e.target.closest('[data-toggle]'); if (!t) return;
+  const it = items[+t.dataset.toggle]; const on = t.checked;
+  try { await mutate(list => { const x = list.find(x => x.id === it.id); if (x) x.enabled = on; }, (on?'Zapnout: ':'Vypnout: ') + (it.name || it.url)); toast(on ? 'Hlídání zapnuto' : 'Hlídání vypnuto'); }
+  catch (err) { t.checked = !on; toast('Chyba: ' + err.message, 6000); }
+});
+
+async function dispatch(mode){
+  await gh('/actions/workflows/check.yml/dispatches', { method: 'POST', body: JSON.stringify({ ref: branch, inputs: { mode } }) });
+}
+$('#btnCheck').onclick = async () => {
+  if (!cfg.token) return openSettings();
+  $('#btnCheck').disabled = true;
+  try { await dispatch('check'); toast('Kontrola spuštěna – výsledek tu bude za 1–2 minuty.'); setTimeout(loadRun, 6000); }
+  catch (err) { toast('Nepodařilo se spustit: ' + err.message, 6000); }
+  finally { setTimeout(()=>$('#btnCheck').disabled = false, 5000); }
+};
+$('#btnTest').onclick = async () => {
+  try { await dispatch('test'); toast('Odesílám testovací zprávu – měla by dorazit do 1–2 minut.'); setTimeout(loadRun, 6000); }
+  catch (err) { toast('Chyba: ' + err.message, 6000); }
+};
+
+function openSettings(){ $('#sRepo').value = cfg.repo || ''; $('#sToken').value = cfg.token || ''; if (!$('#dlgSettings').open) $('#dlgSettings').showModal(); }
+$('#btnSettings').onclick = openSettings;
+$('#btnSetCancel').onclick = () => $('#dlgSettings').close();
+$('#formSettings').addEventListener('submit', e => {
+  e.preventDefault();
+  cfg.repo = $('#sRepo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\/$/,'');
+  cfg.token = $('#sToken').value.trim();
+  LS.set('repo', cfg.repo); LS.set('token', cfg.token);
+  $('#dlgSettings').close(); loadAll();
+});
+document.addEventListener('visibilitychange', () => { if (!document.hidden && cfg.token) { refreshState(); loadRun(); } });
+
+loadAll();
+</script>
+</body>
+</html>
